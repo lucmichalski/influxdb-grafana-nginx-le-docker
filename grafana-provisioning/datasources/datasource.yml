@@ -3,9 +3,9 @@ datasources:
   - name: InfluxDB
     type: influxdb
     access: proxy
-    database: db0
+    database: komakallio
     user: admin
-    password: admin
+    password: 
     url: http://influxdb:8086
     isDefault: true
     editable: true

@@ -1,15 +1,36 @@
 version: '2'
 services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost.d:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+  nginx-proxy-letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    environment:
+      - DEFAULT_EMAIL=jari.saukkonen@gmail.com
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    volumes_from:
+      - nginx-proxy
   influxdb:
     image: influxdb:latest
     ports:
-      - '8086:8086'
+      - '127.0.0.1:8086:8086'
     volumes:
       - influxdb-storage:/var/lib/influxdb
     environment:
-      - INFLUXDB_DB=db0
+      - INFLUXDB_DB=komakallio
       - INFLUXDB_ADMIN_USER=${INFLUXDB_USERNAME}
       - INFLUXDB_ADMIN_PASSWORD=${INFLUXDB_PASSWORD}
+      - VIRTUAL_HOST=metrics.komakallio.fi
+      - VIRTUAL_PORT=8086
+      - LETSENCRYPT_HOST=metrics.komakallio.fi
   chronograf:
     image: chronograf:latest
     ports:
@@ -22,10 +43,12 @@ services:
       - INFLUXDB_URL=http://influxdb:8086
       - INFLUXDB_USERNAME=${INFLUXDB_USERNAME}
       - INFLUXDB_PASSWORD=${INFLUXDB_PASSWORD}
+      - VIRTUAL_HOST=chronograf.komakallio.fi
+      - LETSENCRYPT_HOST=chronograf.komakallio.fi
   grafana:
     image: grafana/grafana:latest
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     volumes:
       - grafana-storage:/var/lib/grafana
       - ./grafana-provisioning/:/etc/grafana/provisioning
@@ -34,7 +57,17 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USERNAME}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_NAME=Komakallio
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_PANELS_DISABLE_SANITIZE_HTML=true
+      - VIRTUAL_HOST=grafana.komakallio.fi
+      - VIRTUAL_PORT=3000
+      - LETSENCRYPT_HOST=grafana.komakallio.fi
 volumes:
   influxdb-storage:
   chronograf-storage:
   grafana-storage:
+  certs:
+  vhost.d:
+  html:
